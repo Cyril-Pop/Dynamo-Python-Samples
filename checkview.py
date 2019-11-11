@@ -1,3 +1,4 @@
+#Copyright(c) 2019 Cyril.P
 def checkview(view, import_inst):
     if not view.IsTemplate:
         #get importinstance in each view
