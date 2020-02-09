@@ -1,4 +1,5 @@
 
+#Copyright(c) 2019 Cyril.P
 import clr
 clr.AddReference('ProtoGeometry')
 from Autodesk.DesignScript.Geometry import *
