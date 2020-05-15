@@ -66,8 +66,12 @@ def colorRamdom(elements, view):
     TransactionManager.Instance.TransactionTaskDone()
 
 
-margin = IN[0] #max margin between element
-collCond = FilteredElementCollector(doc, doc.ActiveView.Id).OfCategory(BuiltInCategory.OST_Conduit).WhereElementIsNotElementType().ToElements()
+margin = IN[0] #max margin between conduits
+collCond = UnwrapElement(IN[1])
+if not hasattr(collCond, "__iter__"):
+	collCond = [collCond]
+#OR
+#collCond = FilteredElementCollector(doc, doc.ActiveView.Id).OfCategory(BuiltInCategory.OST_Conduit).WhereElementIsNotElementType().ToElements()
 
 
 finalgroups = []
