@@ -62,4 +62,4 @@ if objxls.error is None:
 	elemId = List[ElementId]([x.Id for x in outElem if not isinstance(x, ElementType)])			
 	uidoc.Selection.SetElementIds(elemId)			
 	OUT = outElem
-else: OUT = None	
+else: OUT = None
