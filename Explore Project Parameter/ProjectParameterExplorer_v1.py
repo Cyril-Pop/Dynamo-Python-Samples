@@ -30,16 +30,16 @@ import System
 from System.Collections.Generic import List
 
 class ParaProj():
-	def __init__(self, definition, binding):
-		self.defName = definition.Name
-		self.binding = binding	
-		self.thesecats = []
-		self.group = LabelUtils.GetLabelFor(definition.ParameterGroup)
-		for cat in binding.Categories:
-			try:
-				self.thesecats.append(cat.Name)
-			except SystemError:
-				pass    		
+    def __init__(self, definition, binding):
+        self.defName = definition.Name
+        self.binding = binding	
+        self.thesecats = []
+        self.group = LabelUtils.GetLabelFor(definition.ParameterGroup)
+        for cat in binding.Categories:
+            try:
+                self.thesecats.append(cat.Name)
+            except SystemError:
+                pass    		
 
 class MainForm(Form):
     def __init__(self, lstObj_bind):
@@ -176,8 +176,8 @@ class MainForm(Form):
 full_bind = []
 iterator =  doc.ParameterBindings.ForwardIterator()
 while iterator.MoveNext():
-	objBind = ParaProj(iterator.Key, iterator.Current)
-	full_bind.append(objBind)
+    objBind = ParaProj(iterator.Key, iterator.Current)
+    full_bind.append(objBind)
 	
 full_bind.sort(key = lambda x : x.defName) 
 objform = MainForm(full_bind)   
