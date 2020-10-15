@@ -1,0 +1,464 @@
+{
+  "Uuid": "38fd94c8-d43f-4ac6-9a76-dbec16d66b1a",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "test Speech.Recognition_V3",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "# -*- coding: utf-8 -*-\r\nimport sys\r\nimport clr\r\nimport System \r\nimport re\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\n#import Revit API\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitAPIUI')\r\nfrom Autodesk.Revit.UI import *\r\n\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nuiapp = DocumentManager.Instance.CurrentUIApplication\r\n\r\nclr.AddReference(\"System.Windows.Forms\")\r\nimport System.Windows.Forms\r\nfrom System.Windows.Forms import * \r\n\r\nclr.AddReference(\"System.Speech, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35\")\r\nfrom System.Speech.Recognition import (SpeechRecognitionEngine, GrammarBuilder, Grammar, Choices, RecognizeMode)\r\nfrom System.Threading import Thread, ThreadStart, ApartmentState\r\n\r\ncount = 0\r\n\r\ndef up():\r\n\tglobal elem\r\n\tTransactionManager.Instance.EnsureInTransaction(doc)\r\n\tMoveElements(doc, elem.Id, XYZ(0,0,0.5))\r\n\tTransactionManager.Instance.TransactionTaskDone()\r\n\tdoc.Regenerate()\r\n\r\ndef mirror():\r\n\tuiapp.PostCommand(RevitCommandId.LookupPostableCommandId(PostableCommand.MirrorProject))\r\n\r\nclass ModExtEventMirror(IExternalEventHandler):\r\n\tdef __init__(self, ToDo):\r\n\t\tself.ToDo = ToDo\r\n\t\r\n\tdef Execute(self, _uiap):\r\n\t\tself.ToDo() \r\n\t\t\r\n\tdef GetName(self):\r\n\t\treturn \"EventMiroring\"\t\t\r\n\r\ndef main():\r\n\tglobal ext_event\r\n\tsre = SpeechRecognitionEngine()\r\n\tsre.SetInputToDefaultAudioDevice()\r\n\tsre.UnloadAllGrammars()\r\n\r\n\tgb = GrammarBuilder()\r\n\tgb.Append(Choices('up', 'quit'))\r\n\tsre.LoadGrammar(Grammar(gb))\r\n\t\r\n\t\r\n\tdef OnSpeechRecognized(sender, e):\r\n\t\t#MessageBox.Show(e.Result.Text)\r\n\t\tif e.Result.Text == 'quit':\r\n\t\t\tMessageBox.Show(\"SpeechRecognition Stop\")\r\n\t\t\tthread.Join()\r\n\t\t\tthread.Abort()\r\n\t\telif re.match(r'[Uu]p', e.Result.Text) is not None:    \r\n\t\t\tMessageBox.Show(e.Result.Text)\r\n\t\t\text_event.Raise()\r\n\t\t\t#thread.Join()\r\n\t\t\t#thread.Abort()\r\n\t\t\t\r\n\t\r\n\r\n\tsre.SpeechRecognized += OnSpeechRecognized\r\n\r\n\tsre.RecognizeAsync(RecognizeMode.Multiple)\r\n\r\n\traw_input('')\r\n\r\nelem  = UnwrapElement(IN[0])\r\nif sys.platform == 'cli':\r\n\tobj_handler = ModExtEventMirror(up)\r\n\text_event = ExternalEvent.Create(obj_handler)\r\n\tMessageBox.Show(\"Say up OR quit\")\r\n\tthread = Thread(ThreadStart(main))\r\n\tthread.Start()\r\n\r\n\t\t\r\nOUT = sys.platform        ",
+      "VariableInputPorts": true,
+      "Id": "64af15ea2d5c4077a06910cf25814914",
+      "Inputs": [
+        {
+          "Id": "c2be651f030b4a9990f4f2ec8bd7a8ee",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "5c1061bbe11c4a32918dc70b151b1d77",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "0cfeacbda41846c8bb7bb35a4b3759c7",
+          "Name": "OUT",
+          "Description": "Résultat du script Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Exécute un script Python intégré."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": false,
+      "Id": "9171dcbf3cd346009cfa614f1ddd0f24",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "49d5800492c14b67845faf01432c359e",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Sélection entre True et False."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nimport sys\r\nimport time\r\nimport re\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\n#import Revit API\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk\r\nfrom Autodesk.Revit.DB import *\r\n#import specify namespace\r\nfrom Autodesk.Revit.DB.Electrical import *\r\n\r\n#import Revit APIUI namespace\r\nclr.AddReference('RevitAPIUI')\r\nfrom Autodesk.Revit.UI import *\r\n\r\n#import net library\r\nclr.AddReference('System')\r\nfrom System.Collections.Generic import List\r\n\r\nclr.AddReference('RevitNodes')\r\nimport Revit\r\nclr.ImportExtensions(Revit.GeometryConversion)\r\nclr.ImportExtensions(Revit.Elements)\r\n\r\n#import transactionManager and DocumentManager (RevitServices is specific to Dynamo)\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\n#Get Important vars\r\n#Get Important vars\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nuiapp = DocumentManager.Instance.CurrentUIApplication\r\nuidoc = uiapp.ActiveUIDocument\r\napp = uiapp.Application\r\nsdkNumber = int(app.VersionNumber)\r\n\r\n\r\nclr.AddReference('System.Drawing')\r\nclr.AddReference('System.Windows.Forms')\r\nimport System.Drawing\r\nimport System.Windows.Forms\r\n\r\nfrom System.Drawing import *\r\nfrom System.Windows.Forms import *\r\n\r\n\r\nimport System\r\nfrom System.Threading import *\r\nfrom System.Collections.Generic import Dictionary\r\n\r\nmyDoc_path = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments)\r\npf_path = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFilesX86)\r\nsys.path.append('%s\\IronPython 2.7\\Lib' % pf_path)\r\nimport json\r\nfrom cStringIO import StringIO\r\nsys.stdout = StringIO()\r\n\r\n\r\n\r\nclass FormMirror(Form):\r\n\tdef __init__(self, nameProject):\r\n\t\tself._nameProject = \"Data File found, Project : {}\".format( nameProject) if nameProject is not None else \"Not Datas\"\r\n\t\tself._enableFix = True  if nameProject is not None else False \r\n\t\tself.UIChoice = None\r\n\t\tself.InitializeComponent()\r\n\t\r\n\tdef InitializeComponent(self):\r\n\t\tself._buttonMirror = System.Windows.Forms.Button()\r\n\t\tself._buttonFix = System.Windows.Forms.Button()\r\n\t\tself._labelProject = System.Windows.Forms.Label()\r\n\t\tself.SuspendLayout()\r\n\t\t# \r\n\t\t# buttonMirror\r\n\t\t# \r\n\t\tself._buttonMirror.Location = System.Drawing.Point(36, 47)\r\n\t\tself._buttonMirror.Name = \"MirrorP\"\r\n\t\tself._buttonMirror.Size = System.Drawing.Size(148, 61)\r\n\t\tself._buttonMirror.TabIndex = 0\r\n\t\tself._buttonMirror.Text = \"1/Mirror Project\"\r\n\t\tself._buttonMirror.UseVisualStyleBackColor = True\r\n\t\tself._buttonMirror.Click += self.ButtonClick\r\n\t\t# \r\n\t\t# buttonFix\r\n\t\t# \r\n\t\tself._buttonFix.Location = System.Drawing.Point(239, 47)\r\n\t\tself._buttonFix.Name = \"FixWires\"\r\n\t\tself._buttonFix.Size = System.Drawing.Size(148, 61)\r\n\t\tself._buttonFix.TabIndex = 0\r\n\t\tself._buttonFix.Text = \"2/Fix Wires\"\r\n\t\tself._buttonFix.UseVisualStyleBackColor = True\r\n\t\tself._buttonFix.Enabled = self._enableFix\r\n\t\tself._buttonFix.Click += self.ButtonClick\r\n\t\t# \r\n\t\t# labelProject\r\n\t\t# \r\n\t\tself._labelProject.Location = System.Drawing.Point(50, 13)\r\n\t\tself._labelProject.Name = \"labelProject\"\r\n\t\tself._labelProject.Size = System.Drawing.Size(300, 23)\r\n\t\tself._labelProject.TabIndex = 1\r\n\t\tself._labelProject.Text = self._nameProject \r\n\t\t# \r\n\t\t# FormMirror\r\n\t\t# \r\n\t\tself.ClientSize = System.Drawing.Size(430, 131)\r\n\t\tself.Controls.Add(self._labelProject)\r\n\t\tself.Controls.Add(self._buttonFix)\r\n\t\tself.Controls.Add(self._buttonMirror)\r\n\t\tself.Name = \"FormMirror\"\r\n\t\tself.Text = \"FormMirror\"\r\n\t\tself.ResumeLayout(False)\r\n\r\n\r\n\tdef ButtonClick(self, sender, e):\r\n\t\tself.UIChoice = sender.Name\r\n\t\tself.Close()\r\n\r\nclass WireUtils():\r\n\t#\r\n\tinstances  = []\r\n\t#\r\n\tdef __init__(self, elemWire):\r\n\t\tself.wireId = elemWire.Id.IntegerValue\r\n\t\tself.onwerViewId = elemWire.OwnerViewId.IntegerValue\r\n\t\tself.numberVertices = elemWire.NumberOfVertices \r\n\t\tself.dictOldVertices = {}\r\n\t\tfor x in range(self.numberVertices):\r\n\t\t\tself.dictOldVertices[x] = elemWire.GetVertex(x).ToString()\r\n\t\t\t\r\n\t\t#WireUtils.instances.add(self)\t\r\n\t\t# OR\t\t\r\n\t\tself.__class__.instances.append(self)\t\r\n\t\t\t\r\n\t@classmethod\r\n\tdef get_instances(cls):\r\n\t\treturn cls.instances\t\r\n\t\t\r\n\t@classmethod\r\n\tdef get_ElemInstances(cls):\r\n\t\treturn [x.wireId for x in cls.instances ]\t\t\t\r\n\r\n\r\ndef app_thread():\r\n\tuiapp.PostCommand(RevitCommandId.LookupPostableCommandId(PostableCommand.MirrorProject))\r\n\t\r\n\r\ndef getDatafromJsonDict(jsonLoad, valueStr):\r\n\tout = []\r\n\tfor dictx in jsonLoad:\r\n\t\tvalue = dictx.get(valueStr)\r\n\t\tif value is not None:\r\n\t\t\tif re.match(r'[\\[\\{]', value) is not None:\r\n\t\t\t\tout.append(eval(value))\r\n\t\t\telse:\t\r\n\t\t\t\tout.append(value)\r\n\tif len(out) == 1:\r\n\t\treturn out[0]\r\n\telse:\r\n\t\treturn out\t\r\n\t\t\r\ndef findFamilyInstance(elem):\r\n\tptBase = XYZ.Zero\r\n\tif isinstance(elem.Location, LocationPoint):\r\n\t\tif ptBase.DistanceTo(elem.Location.Point) > 10: \r\n\t\t\treturn True\t\t\t\t\r\n\r\nlstInstJson = []\r\nfilePath = myDoc_path + \"\\\\dataWire.json\"\r\ntestFile = System.IO.File.Exists(filePath)\r\ntitleProj = None\r\njsonLoad = None\r\nif testFile:\r\n\twith open(filePath) as json_file:\r\n\t\tjsonLoad = json.load(json_file)\r\n\t\ttitleProj = getDatafromJsonDict(jsonLoad, \"Project\")\r\n\t\t#jsonLoad =  json.loads(jsonStr2)\r\n\t\t\r\n\r\nobjForm  = FormMirror(titleProj)\r\nobjForm.ShowDialog()\r\n\t\t\r\nif objForm.UIChoice == \"MirrorP\":\r\n\tTaskDialog.Show(\"Info\", \"After Mirror Project relaunch Script to Fix Wires\")\r\n\tlstInstJson.append(dict(Project = doc.Title))\r\n\t\r\n\toneElem = FilteredElementCollector(doc).OfClass(FamilyInstance).WhereElementIsNotElementType().ToElements().Find(lambda x : findFamilyInstance(x))\r\n\toldLoc = oneElem.Location.Point\r\n\tdictDiffLoc = {oneElem.Id.IntegerValue : oldLoc.ToString()}\r\n\tjsonStrLoc = json.dumps(dictDiffLoc)\r\n\t#load json into a new dict\r\n\tlstInstJson.append(dict(LocData=jsonStrLoc))\r\n\t\r\n\twireInViewFunc = lambda x : not x.IsTemplate and FilteredElementCollector(doc, x.Id).OfClass(Wire).ToElements().Count > 0 \r\n\tfecViews = FilteredElementCollector(doc).OfClass(Autodesk.Revit.DB.View).WhereElementIsNotElementType().ToElements().FindAll(wireInViewFunc)\r\n\tfor view in fecViews:\r\n\t\tfecWire = FilteredElementCollector(doc, view.Id).OfClass(Wire).WhereElementIsNotElementType()\t\r\n\t\tfor wire in fecWire:\r\n\t\t\tobjWire = WireUtils(wire)\r\n\t\t\t#convert to JSON string\r\n\t\t\tjsonStr = json.dumps(objWire.__dict__)\r\n\t\t\tlstInstJson.append(dict(wireData=jsonStr))\r\n\t\r\n\tlstObjWire = WireUtils.get_instances()\r\n\t#other Way\r\n\t#jsonStr2 = json.dumps([dict(wireData=pn) for pn in lstInstJson])\r\n\tjsonStr2 = json.dumps(lstInstJson)\r\n\t\r\n\twith open(filePath, 'w') as f:\r\n\t\tf.write(jsonStr2)\r\n\t\r\n\t#mirror Project in a new Thread\r\n\tthread = Thread(ThreadStart(app_thread))\r\n\tthread.SetApartmentState(ApartmentState.STA)\r\n\tthread.Start()\r\n\tthread.Join()\r\n\r\nelif jsonLoad is not None:\r\n\tif getDatafromJsonDict(jsonLoad, \"Project\") == doc.Title:\r\n\t\t#Do some action in a Transaction\r\n\t\tTransactionManager.Instance.EnsureInTransaction(doc)\r\n\t\t#get the axis\r\n\t\tdictOldLoc = getDatafromJsonDict(jsonLoad, \"LocData\")\r\n\t\tdictLocKey = next(iter(dictOldLoc))\r\n\t\tdictLocValue = dictOldLoc.get(dictLocKey)\r\n\t\toldLoc = eval(\"XYZ\" + dictLocValue)\r\n\t\telemLoc = doc.GetElement(ElementId(int(dictLocKey)))\r\n\t\tif oldLoc.DistanceTo(elemLoc.Location.Point) > 0.01:\r\n\t\t\tlineAB = Autodesk.Revit.DB.Line.CreateBound(oldLoc, elemLoc.Location.Point)\r\n\t\t\tmidPt = lineAB.Evaluate(0.5, True)\r\n\t\t\tvectToLine = Autodesk.Revit.DB.Line.CreateBound(midPt, lineAB.GetEndPoint(1))\r\n\t\t\tvectLine = vectToLine.Direction \r\n\t\t\t#calculate the transform\r\n\t\t\tplane = Plane.CreateByNormalAndOrigin(vectLine, midPt)\r\n\t\t\tplaneProto = Autodesk.DesignScript.Geometry.Plane.ByOriginNormal(plane.Origin.ToPoint(), plane.Normal.ToVector())\r\n\t\t\ttransf = Transform.CreateReflection(plane)\r\n\t\t\t#get Data from old wires\r\n\t\t\tlstWires = getDatafromJsonDict(jsonLoad, \"wireData\")\r\n\t\t\tfor wiredict in lstWires:\r\n\t\t\t\twireId = wiredict.get(\"wireId\")\r\n\t\t\t\tdictOldVertices = wiredict.get(\"dictOldVertices\")\r\n\t\t\t\telemWire = doc.GetElement(ElementId(int(wireId)))\r\n\t\t\t\tfor i in range(elemWire.NumberOfVertices):\r\n\t\t\t\t\toldPointStr = dictOldVertices.get(str(i))\r\n\t\t\t\t\toldPoint = eval('XYZ' + oldPointStr)\r\n\t\t\t\t\tnewPoint = transf.OfPoint(oldPoint)\r\n\t\t\t\t\telemWire.SetVertex(i, newPoint)\t\t\t\t\r\n\t\t\r\n\t\tTransactionManager.Instance.TransactionTaskDone()\r\n\telse:\r\n\t\tTaskDialog.Show(\"Error\", \"Mirror Project from Script before\")\t\r\n\tSystem.IO.File.Delete(filePath)\r\n\r\n\r\n\r\nsys.stdout.seek(0)\r\n\r\nOUT = titleProj, sys.stdout.read()\r\n\r\n",
+      "VariableInputPorts": true,
+      "Id": "bafeaf8c48e64fa4bd6768665e2cd9a6",
+      "Inputs": [
+        {
+          "Id": "4fd0f67d30c14c2c846f711abe3ed881",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e360188fef81412599a2e01f088f19e9",
+          "Name": "OUT",
+          "Description": "Résultat du script Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Exécute un script Python intégré."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "\r\nimport clr\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitAPIUI')\r\nfrom Autodesk.Revit.UI import *\r\n\r\nclass MyClass():\r\n\tclass ModExternalEvent(IExternalEventHandler):\r\n\t\tdef __init__(self, ToDo):\r\n\t\t\tself.ToDo = ToDo\r\n\t\t\tself.outValue = \"HelloWorldTest2\"\r\n\t\t\r\n\t\tdef Execute(self, _uiap):\r\n\t\t\tself.ToDo() \r\n\t\t\t\r\n\t\t\r\n\t\tdef GetName(self):\r\n\t\t\treturn \"Test External Event\"\r\n\t\r\n\r\n\t\t\r\nswitchTest = IN[0]\r\nif switchTest == False:\t\t\r\n\tOUT = MyClass\r\nelse:\r\n\tOUT = None\r\n\r\n\t",
+      "VariableInputPorts": true,
+      "Id": "93d760053490469a9d3c8f0ef62a83dc",
+      "Inputs": [
+        {
+          "Id": "04a829005e9a45fb9319785de1e8a086",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "72179c132eaf44c58964762a3ac43476",
+          "Name": "OUT",
+          "Description": "Résultat du script Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Exécute un script Python intégré."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "\r\nimport clr\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\nclr.AddReference('RevitAPI')\r\nimport Autodesk\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference('RevitAPIUI')\r\nfrom Autodesk.Revit.UI import *\r\n\r\n\r\ndef helloWorld():\r\n\tTaskDialog.Show(\"Hello\",\"HelloWorldTest2\")\r\n\t\r\nModuleMyClass = IN[0]\r\n\r\nif ModuleMyClass is not None:\r\n\r\n\tobj_handler = ModuleMyClass.ModExternalEvent(helloWorld)\r\n\text_event = ExternalEvent.Create(obj_handler)\r\n\text_event.Raise()\r\n\tOUT = obj_handler.outValue\r\n",
+      "VariableInputPorts": true,
+      "Id": "23418c38ab91435ca1ae847cfd0fc742",
+      "Inputs": [
+        {
+          "Id": "ae3ef309344346e6b96c345b5afac8fa",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "b4d23f22007c4cc8bfb9265d8123ea66",
+          "Name": "OUT",
+          "Description": "Résultat du script Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Exécute un script Python intégré."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "22d5e05d8a3245849579c5a86708ebf3",
+      "Inputs": [
+        {
+          "Id": "1b68c73f5db2440da0399c31dbe32d31",
+          "Name": "",
+          "Description": "Noeud à évaluer.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "ed1679f07b644e8fa3655846b146d668",
+          "Name": "",
+          "Description": "Regarder le contenu.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualiser la sortie du noeud."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "Autodesk.DesignScript.Geometry.Line.ByStartPointEndPoint@Autodesk.DesignScript.Geometry.Point,Autodesk.DesignScript.Geometry.Point",
+      "Id": "ef4bc9ecf8d6459cac96533d8f66ef8e",
+      "Inputs": [
+        {
+          "Id": "32b824ce07a548938bc1cc13d064e061",
+          "Name": "startPoint",
+          "Description": "Point",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "6d9f0564e3f84b3fbe8a65160abda0cc",
+          "Name": "endPoint",
+          "Description": "Point",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "18f60dae48fe4e13ade702b16fecfc7b",
+          "Name": "Line",
+          "Description": "Line",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Crée une ligne droite entre deux points d'entrée.\n\nLine.ByStartPointEndPoint (startPoint: Point, endPoint: Point): Line"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "Autodesk.DesignScript.Geometry.Point.ByCoordinates@double,double,double",
+      "Id": "e1a62845c717458e9ecfb337c6967877",
+      "Inputs": [
+        {
+          "Id": "c9346ad8d9a846e68e1dd22a8d6fdae3",
+          "Name": "x",
+          "Description": "double\nValeur par défaut : 0",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "29403acd032841f29cb4ae1d5a8d4171",
+          "Name": "y",
+          "Description": "double\nValeur par défaut : 0",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "220b2898f1d7468e801446407e307e10",
+          "Name": "z",
+          "Description": "double\nValeur par défaut : 0",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "1b94abb94d114644b04d8345f1df0d1c",
+          "Name": "Point",
+          "Description": "Point",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Former un point en fonction de 3 coordonnées cartésiennes\n\nPoint.ByCoordinates (x: double = 0, y: double = 0, z: double = 0): Point"
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "f468df52-2f56-4c0c-a45f-8e737ce9fb08-00021487"
+      ],
+      "Id": "9c5f002485d94fdd8fa103a1f31658f7",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "5f2f4b71ac1c4df192e576bf7efc2cbc",
+          "Name": "Element",
+          "Description": "Eléments sélectionnés.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "49d5800492c14b67845faf01432c359e",
+      "End": "5c1061bbe11c4a32918dc70b151b1d77",
+      "Id": "d0c5efd119ce46daa777b698c9455072"
+    },
+    {
+      "Start": "72179c132eaf44c58964762a3ac43476",
+      "End": "ae3ef309344346e6b96c345b5afac8fa",
+      "Id": "6db8502ac92649c38b31f64e21c201bd"
+    },
+    {
+      "Start": "b4d23f22007c4cc8bfb9265d8123ea66",
+      "End": "1b68c73f5db2440da0399c31dbe32d31",
+      "Id": "f50fc601d1ea43b4bfa311824e3eafdd"
+    },
+    {
+      "Start": "5f2f4b71ac1c4df192e576bf7efc2cbc",
+      "End": "c2be651f030b4a9990f4f2ec8bd7a8ee",
+      "Id": "8f6990481c1f4f6189df5a2d72f4a597"
+    }
+  ],
+  "Dependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.0.4.12684",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Aperçu en arrière-plan",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "64af15ea2d5c4077a06910cf25814914",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 529.78796755162568,
+        "Y": 166.5452660316729
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Boolean",
+        "Id": "9171dcbf3cd346009cfa614f1ddd0f24",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 206.7149286814406,
+        "Y": 203.79376201193142
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "bafeaf8c48e64fa4bd6768665e2cd9a6",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": true,
+        "X": 847.59241736857632,
+        "Y": 255.2927397627796
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "93d760053490469a9d3c8f0ef62a83dc",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": true,
+        "X": 290.57751221289732,
+        "Y": -177.66997122419031
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "23418c38ab91435ca1ae847cfd0fc742",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 686.86905934176139,
+        "Y": -175.74451000991331
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Watch",
+        "Id": "22d5e05d8a3245849579c5a86708ebf3",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1002.2652163150822,
+        "Y": -166.09416256501834
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Line.ByStartPointEndPoint",
+        "Id": "ef4bc9ecf8d6459cac96533d8f66ef8e",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 960.837578057069,
+        "Y": 181.55042923038332
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Point.ByCoordinates",
+        "Id": "e1a62845c717458e9ecfb337c6967877",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 844.07332539496758,
+        "Y": 173.86857050261352
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Select Model Element",
+        "Id": "9c5f002485d94fdd8fa103a1f31658f7",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 169.6215079720869,
+        "Y": 58.517445872619476
+      }
+    ],
+    "Annotations": [
+      {
+        "Id": "258b3196120746909a4f2f4f5c6b274b",
+        "Title": "Test2 if False",
+        "Nodes": [
+          "93d760053490469a9d3c8f0ef62a83dc",
+          "23418c38ab91435ca1ae847cfd0fc742",
+          "22d5e05d8a3245849579c5a86708ebf3"
+        ],
+        "Left": 280.57751221289732,
+        "Top": -230.66997122419031,
+        "Width": 809.68770410218485,
+        "Height": 158.57580865917197,
+        "FontSize": 36.0,
+        "InitialTop": -177.66997122419031,
+        "InitialHeight": 156.57580865917197,
+        "TextblockHeight": 43.0,
+        "Background": "#FFA4E1FF"
+      }
+    ],
+    "X": -168.8626253443835,
+    "Y": -73.950279362415472,
+    "Zoom": 1.1782858655947872
+  }
+}
