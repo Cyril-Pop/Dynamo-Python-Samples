@@ -1,0 +1,256 @@
+{
+  "Uuid": "6c9f3f96-920b-454b-b6f2-55963c553bd5",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "Create Filled Region by Floor and Trim Benches and Bins_v11(work in progress)",
+  "ElementResolver": {
+    "ResolutionMap": {
+      "DSCore.List": {
+        "Key": "DSCore.List",
+        "Value": "DSCoreNodes.dll"
+      }
+    }
+  },
+  "Inputs": [
+    {
+      "Id": "47c27aa4354740daa7781e6afeff92da",
+      "Name": "Filled Region Type Name",
+      "Type": "string",
+      "Value": "Vertical",
+      "Description": "Crée une chaîne."
+    }
+  ],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nimport sys\r\nimport System\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\nimport Autodesk.DesignScript.Geometry as DS\r\n\r\nclr.AddReference(\"RevitServices\")\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\n\r\nclr.AddReference(\"RevitNodes\")\r\nimport Revit\r\nclr.ImportExtensions(Revit.Elements)\r\nclr.ImportExtensions(Revit.GeometryConversion)\r\n\r\nclr.AddReference(\"RevitAPI\")\r\nfrom Autodesk.Revit.DB import *\r\n\r\nfrom System.Collections.Generic import List\r\n\r\npf_path = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ProgramFilesX86)\r\nsys.path.append('%s\\IronPython 2.7\\Lib' % pf_path)\r\nfrom cStringIO import StringIO\r\nsys.stdout = StringIO()\r\n\r\n\r\ndef tolist(obj1):\r\n\tif hasattr(obj1,\"__iter__\"): return obj1\r\n\telse: return [obj1]\r\n\r\ndef getTopFace(elem):\r\n\topt = Options()\r\n\tlstFGeo = elem.get_Geometry(opt)\r\n\tfor geo in lstFGeo:\r\n\t\tif isinstance(geo, Solid):\r\n\t\t\tfor face in geo.Faces:\r\n\t\t\t\tif isinstance(face, PlanarFace) and face.FaceNormal.IsAlmostEqualTo(XYZ.BasisZ):\r\n\t\t\t\t\tedgLoopArr =  face.EdgeLoops \r\n\t\t\t\t\tZFloor = face.Origin.Z\r\n\t\t\t\t\treturn edgLoopArr, face, ZFloor\r\n\t\t\t\t\t\r\ndef getSketchAndFaces(floor):\r\n\t#get lst of Top Faces\r\n\tlstFace = []\r\n\topt = Options()\r\n\tlstFGeo = floor.get_Geometry(opt)\r\n\tfor geo in lstFGeo:\r\n\t\tif isinstance(geo, Solid):\r\n\t\t\tfor face in geo.Faces:\r\n\t\t\t\tbbxUv = face.GetBoundingBox()\r\n\t\t\t\tcenterUv = (bbxUv.Max + bbxUv.Min) / 2\r\n\t\t\t\tnormal = face.ComputeNormal(centerUv)\r\n\t\t\t\tnormal = normal.Normalize()\r\n\t\t\t\tif normal.DotProduct(XYZ.BasisZ) > 0.5 :\r\n\t\t\t\t\t#ZFloor = face.Origin.Z\r\n\t\t\t\t\tlstFace.append(face)\r\n\t\t\t\t\t\r\n\t#find the sketchlines with the TTT  (temporary transaction trick)\t\t\t\t\r\n\tif len(lstFace) > 0:\t\r\n\t\tTransactionManager.Instance.ForceCloseTransaction()\t\r\n\t\tt1 = Transaction(doc, \"temp\")\r\n\t\tt1.Start()\r\n\t\tdeleted = doc.Delete(floor.Id)\r\n\t\tt1.RollBack()\r\n\t\tfor d in deleted:\r\n\t\t\ttest_el = doc.GetElement(d)\r\n\t\t\tif isinstance(test_el, Sketch):\r\n\t\t\t\tprofileArry = test_el.Profile\r\n\t\t\t\tskplane = test_el.SketchPlane \r\n\t\t\t\tplane = skplane.GetPlane()\r\n\t\t\t\tZFloor = plane.Origin.Z\r\n\t\t\t\tt1.Dispose()\r\n\t\t\t\treturn profileArry, lstFace, ZFloor\r\n\t\tt1.Dispose()\t\t\t\r\n\treturn None, None, None\t\t\r\n\t\r\n\t\t\t\t\r\ndef getCurvloopBBx(elem, ZFloor):\r\n\t#subfunction\r\n\tdef flattenGen(*args):\r\n\t\tfor x in args:\r\n\t\t\tif hasattr(x, \"__iter__\") and not isinstance(x, str):\r\n\t\t\t\tfor y in flattenGen(*x) : yield y\r\n\t\t\telse: yield x\r\n\t        \r\n\tdef createCurveLoop(lstPoint):\r\n\t\tcurves = []\r\n\t\tfor idx, pt in enumerate(lstPoint):\r\n\t\t\tif idx > 0:\r\n\t\t\t\tline = Line.CreateBound(lstPoint[idx -1], pt)\r\n\t\t\t\tcurves.append(line)\r\n\t\t\telse:\t\r\n\t\t\t\tline = Line.CreateBound(lstPoint[-1], lstPoint[0])\r\n\t\t\t\tcurves.append(line)\t\t\r\n\t\tcurveLoop = CurveLoop.Create(curves)\t\r\n\t\treturn curveLoop\t\t\r\n\r\n\tdef SumBoxes(boxes):\r\n\t\tminx = min([b.Min.X for b in boxes])\r\n\t\tminy = min([b.Min.Y for b in boxes])\r\n\t\tminz = min([b.Min.Z for b in boxes])\r\n\t\tmaxx = max([b.Max.X for b in boxes])\r\n\t\tmaxy = max([b.Max.Y for b in boxes])\r\n\t\tmaxz = max([b.Max.Z for b in boxes])\r\n\t\tbb = BoundingBoxXYZ()\r\n\t\tbb.Min = XYZ(minx,miny,minz)\r\n\t\tbb.Max = XYZ(maxx,maxy,maxz)\r\n\t\treturn bb\r\n\r\n\r\n\tdef GeoBox(g):\r\n\t\tbox = g.GetBoundingBox()\r\n\t\torigin = box.Transform.Origin\r\n\t\tbox.Min = box.Min.Add(origin)\r\n\t\tbox.Max = box.Max.Add(origin)\r\n\t\treturn box\r\n\t#main function\r\n\t#get angle from familyInstance\r\n\ttransform = elem.GetTransform()\r\n\tvectorTran = transform.OfVector(transform.BasisX)\r\n\tangle = transform.BasisX.AngleOnPlaneTo(vectorTran, transform.BasisZ)\r\n\t#nalyse geometry\r\n\tboxes = []\r\n\topt = Options()\r\n\tsolids,boxes = [],[]\r\n\tinstGeo = elem.get_Geometry(opt)\r\n\tfor ig in instGeo:\r\n\t\tif ig.GetType() == Solid:\r\n\t\t\tgstyle = g.Visibility \r\n\t\t\tprint(gstyle)\r\n\t\t\tbox = GeoBox(ig)\r\n\t\t\tboxes.append(box)\r\n\t\t\tsolids.append(ig)\r\n\t\telse:\t\t\t\r\n\t\t\tfor g in flattenGen(ig.GetInstanceGeometry()):\r\n\t\t\t\tif g.GetType() == Solid:\r\n\t\t\t\t\tgstyle = g.Visibility \r\n\t\t\t\t\tprint(gstyle)\r\n\t\t\t\t\tbox = g.GetBoundingBox()\r\n\t\t\t\t\tif box.Max.X < 99999:\t\t\t\t\t\r\n\t\t\t\t\t\tbox = GeoBox(g)\r\n\t\t\t\t\t\tboxes.append(box)\r\n\t\t\t\t\t\tsolids.append(g)\r\n\tinstGeo.Dispose()\t\t\t\t\r\n\tsumBox = SumBoxes(boxes)\r\n\tcenter = box.Max.Add(box.Min).Multiply(0.5)\r\n\t#transform geometry at angle (reverse)\r\n\trotatedBoxes = []\r\n\tfor solid in solids:\r\n\t\tt = Transform.CreateRotationAtPoint(XYZ.BasisZ,-angle,center)\r\n\t\tg = SolidUtils.CreateTransformed(solid,t)\r\n\t\trotatedBoxes.append(GeoBox(g))\r\n\t\tsolid.Dispose()\t\t\t\r\n\t#get Bounding Box of  geometries transformed\r\n\tsumBox = SumBoxes(rotatedBoxes)\r\n\tminp = sumBox.Min\r\n\tmaxp = sumBox.Max\r\n\t\r\n\tp1 = XYZ(minp.X,minp.Y,ZFloor)\r\n\tp3 = XYZ(maxp.X,maxp.Y,ZFloor)\r\n\tp2 = XYZ(minp.X,maxp.Y,ZFloor)\r\n\tp4 = XYZ(maxp.X,minp.Y,ZFloor)\r\n\t\r\n\tt2 = Transform.CreateRotationAtPoint(XYZ.BasisZ,angle,center)\r\n\tlistPts = [t2.OfPoint(p) for p in [p1,p2,p3,p4]]\r\n\tcurvloop = createCurveLoop(listPts)\r\n\treturn curvloop\r\n\t\r\n\t\t\t\r\ntoList = lambda x : x if hasattr(x, '__iter__') else [x]\r\nlstfloor = toList(UnwrapElement(IN[0]))\r\nfilledRegionName = IN[1]\r\nview = doc.ActiveView\r\n#ZFloor = 0\r\n\r\nfilledType =  FilteredElementCollector(doc).OfClass(FilledRegionType).ToElements().Find(lambda x : Element.Name.GetValue(x) == filledRegionName)\r\n\r\nout = []\r\nlsterror = []\r\noutcurvDS = []\r\nfor floor in lstfloor:\r\n\tif isinstance(floor, Floor):\r\n\t\tedgLoopArr, lstFace, ZFloor = getSketchAndFaces(floor)\r\n\t\t\r\n\t\t#convert Array Edges Loop in listCurveloop\r\n\t\tboundariesLoop = List[CurveLoop]()\r\n\t\tfor lstEdg in edgLoopArr:\r\n\t\t\tlstCurvDS = [x.ToProtoType() for x in lstEdg]\r\n\t\t\tpolycurvDS = DS.PolyCurve.ByJoinedCurves(lstCurvDS)\r\n\t\t\tlstCurv = List[Curve]([x.ToRevitType() for x in polycurvDS.Curves()])\r\n\t\t\t#curvLoop = CurveLoop.Create(lstCurv)\r\n\t\t\tcurvLoop = CurveLoop.Create(lstCurv)\r\n\t\t\tboundariesLoop.Add(curvLoop)\r\n\r\n\r\n\t\t#Create Multi category filter\r\n\t\tcat_list = [BuiltInCategory.OST_Furniture, BuiltInCategory.OST_GenericModel]\r\n\t\ttyped_list = List[BuiltInCategory](cat_list)\r\n\t\tfiltercat = ElementMulticategoryFilter(typed_list)\r\n\t\tfecmultiplefilter = FilteredElementCollector(doc).WherePasses(filtercat).WhereElementIsNotElementType().ToElements()\r\n\t\tfor elemMob in fecmultiplefilter:\r\n\t\t\tfor floorface in lstFace:\r\n\t\t\t\tinterResult = floorface.Project(elemMob.Location.Point)\r\n\t\t\t\tif interResult is not None and interResult.Distance < 0.1:\r\n\t\t\t\t\t#contruct a new loop curve and add at the prinicipal loop\r\n\t\t\t\t\tcurvLoop = getCurvloopBBx(elemMob, ZFloor)\r\n\t\t\t\t\toutcurvDS.append([x.ToProtoType() for x in curvLoop])\r\n\t\t\t\t\tboundariesLoop.Add(curvLoop)\r\n\t\ttry:\r\n\t\t\tTransactionManager.Instance.EnsureInTransaction(doc)\r\n\t\t\tfilled = FilledRegion.Create(doc, filledType.Id, view.Id, boundariesLoop)\r\n\t\t\tTransactionManager.Instance.TransactionTaskDone()\r\n\t\t\tout.append(filled)\r\n\t\texcept:\r\n\t\t\timport traceback\r\n\t\t\terrorReport = traceback.format_exc()  \r\n\t\t\tlsterror.append(errorReport)\r\n\t\toutcurvDS.append([x.ToProtoType() for curvLoop in boundariesLoop for x in curvLoop])\r\n\r\n\r\nsys.stdout.seek(0)\r\nOUT = out, outcurvDS, ZFloor, lsterror, sys.stdout.read()\r\n\r\n",
+      "VariableInputPorts": true,
+      "Id": "df7546d78c1d430593ff268856db9435",
+      "Inputs": [
+        {
+          "Id": "c363f7c9fd1d4f979f7e93eb08b88e44",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "b4546772049f410eb777899d6d4e3400",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "a895161545ac449dbf258aa95b1acfc0",
+          "Name": "OUT",
+          "Description": "Résultat du script Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Exécute un script IronPython intégré."
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "934f43d6-e7c5-48f6-8f26-9888bb0e0950-000387d9"
+      ],
+      "Id": "914232cf3388426c8db107d68e82acb5",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "5831bed92266433fa1c853a2101071df",
+          "Name": "Element",
+          "Description": "Eléments sélectionnés.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Vertical",
+      "Id": "47c27aa4354740daa7781e6afeff92da",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "a447614b716a4eb580f0543f7213dec4",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Crée une chaîne."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "NodeType": "CodeBlockNode",
+      "Code": "floor_Or_FloorList;",
+      "Id": "dc7c3688512241d395f46800f8eea973",
+      "Inputs": [
+        {
+          "Id": "b137f4f977034802a6890fc9a449a463",
+          "Name": "floor_Or_FloorList",
+          "Description": "floor_Or_FloorList",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "5fca535ebf82464d9d3fa6b0b214f2cf",
+          "Name": "",
+          "Description": "Valeur de l'expression à la ligne 1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Permet de créer le code DesignScript directement"
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementsSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "6619d0cb-b99d-4c6b-a05c-9874ec61053a-00054b31"
+      ],
+      "Id": "67ff5d7f46dd4675a41658baf4ca53ef",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "3b5e4a53ac9f490e90e13e311cdae565",
+          "Name": "Elements",
+          "Description": "Eléments sélectionnés.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "a447614b716a4eb580f0543f7213dec4",
+      "End": "b4546772049f410eb777899d6d4e3400",
+      "Id": "82df7271eca5474082ffab2d8823e1f1"
+    },
+    {
+      "Start": "5fca535ebf82464d9d3fa6b0b214f2cf",
+      "End": "c363f7c9fd1d4f979f7e93eb08b88e44",
+      "Id": "0eecd253857b4576bd0ce48630145ebc"
+    },
+    {
+      "Start": "3b5e4a53ac9f490e90e13e311cdae565",
+      "End": "b137f4f977034802a6890fc9a449a463",
+      "Id": "5d21387da74f4f4c973a83150689be22"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 10000.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.3.0.5885",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Aperçu en arrière-plan",
+      "EyeX": 35215.967064935714,
+      "EyeY": 45066.869167997385,
+      "EyeZ": 2386.49250963993,
+      "LookX": -4814.9278857054524,
+      "LookY": -29235.90662032894,
+      "LookZ": -6673.4519615620948,
+      "UpX": -0.51613962044323514,
+      "UpY": 0.47101188121935483,
+      "UpZ": -0.71536543106216621
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "df7546d78c1d430593ff268856db9435",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 924.87960381396067,
+        "Y": -680.2068590249
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Select Model Element | Floor ",
+        "Id": "914232cf3388426c8db107d68e82acb5",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 184.66679484461429,
+        "Y": -789.4870271500231
+      },
+      {
+        "ShowGeometry": false,
+        "Name": "Filled Region Type Name",
+        "Id": "47c27aa4354740daa7781e6afeff92da",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 528.96330084797751,
+        "Y": -520.4539038327448
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Code Block",
+        "Id": "dc7c3688512241d395f46800f8eea973",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 472.27601966922731,
+        "Y": -677.73963021903921
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Select Model Elements | Floors",
+        "Id": "67ff5d7f46dd4675a41658baf4ca53ef",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 161.82381906855574,
+        "Y": -665.84712645149364
+      }
+    ],
+    "Annotations": [],
+    "X": -951.14829367276354,
+    "Y": 872.85157137577585,
+    "Zoom": 1.3689878852677326
+  }
+}
